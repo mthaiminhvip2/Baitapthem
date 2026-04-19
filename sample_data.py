@@ -11,9 +11,11 @@ import numpy as np
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    parser = argparse.ArgumentParser(description="Tạo hai file PKL demo theo cấu trúc WHAM-like.")
+    parser = argparse.ArgumentParser(
+        description="Tạo hai file PKL demo theo cấu trúc WHAM-like."
+    )
     parser.add_argument("--output", default="samples")
-    parser.add_argument("--frames", type=int, default=8)
+    parser.add_argument("--frames", type=int, default=18)
     args = parser.parse_args()
 
     output = Path(args.output)
@@ -26,7 +28,9 @@ def main() -> int:
     return 0
 
 
-def make_sample(frame_count: int) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+def make_sample(
+    frame_count: int,
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
     rng = np.random.default_rng(42)
     frame_ids = np.arange(frame_count)
     pose1 = rng.normal(0.0, 0.035, size=(frame_count, 72))

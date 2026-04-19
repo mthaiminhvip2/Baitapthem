@@ -68,7 +68,7 @@ def analyze_frame(
     settings: AnalysisSettings | None = None,
 ) -> FrameAnalysis:
     settings = settings or AnalysisSettings()
-    common_names = sorted(set(joints_a).intersection(joints_b))
+    common_names = sorted(set(joints_a).intersection(joints_b) - {"frame_id"})
     if not common_names:
         raise ValueError(f"Frame {frame_id!r} has no common joints to compare.")
 
@@ -93,9 +93,7 @@ def analyze_frame(
         if threshold > 0.0 and error >= threshold
     ]
 
-    inlier_names = [
-        name for name in stable_names if name not in set(d_distance_errors)
-    ]
+    inlier_names = [name for name in stable_names if name not in set(d_distance_errors)]
     pair_errors = _pair_distance_errors(joints_a, joints_b, inlier_names)
     q1, q3, mean = _summary(pair_errors)
 
@@ -122,7 +120,9 @@ def analyze_sequences(
     settings = settings or AnalysisSettings()
     common_frame_ids = sort_frame_ids(set(frames_a).intersection(frames_b))
     return {
-        frame_id: analyze_frame(frame_id, frames_a[frame_id], frames_b[frame_id], settings)
+        frame_id: analyze_frame(
+            frame_id, frames_a[frame_id], frames_b[frame_id], settings
+        )
         for frame_id in common_frame_ids
     }
 
@@ -140,13 +140,17 @@ def get_orientation_flags(joints: JointMap, epsilon: float = 1e-2) -> Dict[str, 
     forward_vec = np.cross(v_lr, v_spine)
     norm = np.linalg.norm(forward_vec)
     if norm < 1e-12:
-        raise ValueError("Cannot determine body-facing direction: torso plane is degenerate.")
+        raise ValueError(
+            "Cannot determine body-facing direction: torso plane is degenerate."
+        )
     forward_vec = forward_vec / norm
     torso_center = (mid_shoulders + mid_hips) / 2.0
 
     flags: Dict[str, int] = {}
     for name, pos in joints.items():
-        dot_product = float(np.dot(np.asarray(pos, dtype=float) - torso_center, forward_vec))
+        dot_product = float(
+            np.dot(np.asarray(pos, dtype=float) - torso_center, forward_vec)
+        )
         if abs(dot_product) < epsilon:
             flags[name] = 0
         else:
@@ -198,8 +202,12 @@ def _pair_distance_errors(
     errors: List[float] = []
     for left_idx, left in enumerate(names):
         for right in names[left_idx + 1 :]:
-            da = float(np.linalg.norm(np.asarray(joints_a[left]) - np.asarray(joints_a[right])))
-            db = float(np.linalg.norm(np.asarray(joints_b[left]) - np.asarray(joints_b[right])))
+            da = float(
+                np.linalg.norm(np.asarray(joints_a[left]) - np.asarray(joints_a[right]))
+            )
+            db = float(
+                np.linalg.norm(np.asarray(joints_b[left]) - np.asarray(joints_b[right]))
+            )
             errors.append(abs(da - db))
     return errors
 
@@ -231,7 +239,9 @@ def _distance_threshold(errors: Sequence[float], settings: AnalysisSettings) -> 
     )
 
 
-def _summary(values: Sequence[float]) -> tuple[float | None, float | None, float | None]:
+def _summary(
+    values: Sequence[float],
+) -> tuple[float | None, float | None, float | None]:
     if not values:
         return None, None, None
     array = np.asarray(values, dtype=float)

@@ -81,7 +81,32 @@ BODY25_JOINT_NAMES = [
 ]
 
 SMPL_PARENTS = np.asarray(
-    [-1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 12, 12, 13, 14, 16, 17, 18, 19, 20, 21],
+    [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        12,
+        12,
+        12,
+        13,
+        14,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+    ],
     dtype=int,
 )
 
@@ -147,7 +172,11 @@ def load_pose_sequence(
     explicit_joints = _extract_explicit_joints(person)
     if explicit_joints is not None:
         frame_ids = _extract_frame_ids(person, len(explicit_joints))
-        frames = _array_to_frames(explicit_joints, frame_ids, _extract_joint_names(person, explicit_joints.shape[1]))
+        frames = _array_to_frames(
+            explicit_joints,
+            frame_ids,
+            _extract_joint_names(person, explicit_joints.shape[1]),
+        )
         representation = "explicit_joints"
     else:
         poses = _extract_pose_array(person)
@@ -204,7 +233,10 @@ def _select_person(data: Any, person_id: int) -> Any:
         text_key = str(person_id)
         if text_key in data:
             return data[text_key]
-        if any(key in data for key in ("pose", "poses", "joints", "joints3d", "keypoints3d")):
+        if any(
+            key in data
+            for key in ("pose", "poses", "joints", "joints3d", "keypoints3d")
+        ):
             return data
         for key in ("results", "people", "persons", "tracks"):
             value = data.get(key)
@@ -223,7 +255,10 @@ def _extract_frame_ids(person: Any, length: int) -> list[int | str]:
                 if not isinstance(values, list):
                     values = [values]
                 if len(values) == length:
-                    return [int(v) if isinstance(v, (np.integer, int)) else str(v) for v in values]
+                    return [
+                        int(v) if isinstance(v, (np.integer, int)) else str(v)
+                        for v in values
+                    ]
     return list(range(length))
 
 
@@ -335,8 +370,12 @@ def _joints_from_smpl_model_if_available(
     with torch.no_grad():
         output = model(
             betas=torch.as_tensor(betas[:, :10], dtype=torch.float32, device=device),
-            global_orient=torch.as_tensor(poses[:, :3], dtype=torch.float32, device=device),
-            body_pose=torch.as_tensor(poses[:, 3:72], dtype=torch.float32, device=device),
+            global_orient=torch.as_tensor(
+                poses[:, :3], dtype=torch.float32, device=device
+            ),
+            body_pose=torch.as_tensor(
+                poses[:, 3:72], dtype=torch.float32, device=device
+            ),
             transl=torch.as_tensor(trans, dtype=torch.float32, device=device),
         )
     joints = output.joints.detach().cpu().numpy()
@@ -359,7 +398,9 @@ def _joints_from_pose_surrogate(poses: np.ndarray, trans: np.ndarray) -> np.ndar
                 coords[joint_index] = trans[frame_index]
             else:
                 rotations[joint_index] = rotations[parent] @ local_rotation
-                coords[joint_index] = coords[parent] + rotations[parent] @ SMPL_REST_OFFSETS[joint_index]
+                coords[joint_index] = (
+                    coords[parent] + rotations[parent] @ SMPL_REST_OFFSETS[joint_index]
+                )
         all_coords[frame_index] = coords
     return all_coords
 
@@ -387,7 +428,11 @@ def _array_to_frames(
         if names is None:
             names = [f"joint_{idx:02d}" for idx in range(coords.shape[0])]
         frames[frame_id] = {
-            name: np.asarray(coords[index, :3], dtype=float) for index, name in enumerate(names)
+            "frame_id": frame_id,
+            **{
+                name: np.asarray(coords[index, :3], dtype=float)
+                for index, name in enumerate(names)
+            },
         }
     return frames
 
@@ -407,5 +452,10 @@ def _frame_joint_dict_to_array(value: Mapping[Any, Mapping[str, Any]]) -> np.nda
     joint_names = list(first_frame)
     frames = []
     for frame_key in frame_keys:
-        frames.append([np.asarray(value[frame_key][name], dtype=float)[:3] for name in joint_names])
+        frames.append(
+            [
+                np.asarray(value[frame_key][name], dtype=float)[:3]
+                for name in joint_names
+            ]
+        )
     return np.asarray(frames, dtype=float)

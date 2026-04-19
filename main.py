@@ -21,7 +21,7 @@ DEFAULT_FILE_2 = "wham_cam2.pkl"
 def configure_console() -> None:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            getattr(stream, "reconfigure")(encoding="utf-8", errors="replace")
 
 
 def main() -> int:
@@ -38,8 +38,12 @@ def main() -> int:
     )
 
     try:
-        seq_a = load_pose_sequence(args.file1, args.person_id, args.smpl_model_dir, args.gender)
-        seq_b = load_pose_sequence(args.file2, args.person_id, args.smpl_model_dir, args.gender)
+        seq_a = load_pose_sequence(
+            args.file1, args.person_id, args.smpl_model_dir, args.gender
+        )
+        seq_b = load_pose_sequence(
+            args.file2, args.person_id, args.smpl_model_dir, args.gender
+        )
     except Exception as exc:
         print(f"Lỗi đọc PKL: {exc}", file=sys.stderr)
         print(
@@ -72,8 +76,19 @@ def main() -> int:
         return 3
     print_report(before, after, selected_frame_ids, args.reduced)
 
-    write_json_report(args.output_json, before, after, selected_frame_ids, seq_a, seq_b, refined_a, refined_b)
-    html_path = write_html_report(args.output_html, before, after, selected_frame_ids)
+    write_json_report(
+        args.output_json,
+        before,
+        after,
+        selected_frame_ids,
+        seq_a,
+        seq_b,
+        refined_a,
+        refined_b,
+    )
+    html_path = write_html_report(
+        args.output_html, before, after, selected_frame_ids
+    )
     print(f"\nĐã ghi HTML: {html_path.resolve()}")
     print(f"Đã ghi JSON: {Path(args.output_json).resolve()}")
     if solver.load_error:
@@ -85,21 +100,62 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Phân tích hai file SMPL/pose PKL trước và sau bước Learnable IK refinement."
     )
-    parser.add_argument("--file1", default=None, help=f"PKL camera/video 1, mặc định {DEFAULT_FILE_1}")
-    parser.add_argument("--file2", default=None, help=f"PKL camera/video 2, mặc định {DEFAULT_FILE_2}")
-    parser.add_argument("--reduced", default=None, choices=("true", "false"), help="true: chỉ in kết quả chính")
-    parser.add_argument("--frame-id", default=None, help="Frame cần in, hoặc 'all' để in tất cả")
-    parser.add_argument("--no-prompt", action="store_true", help="Không hỏi tương tác, dùng tham số/default")
-    parser.add_argument("--timeout", type=float, default=5.0, help="Số giây chờ nhập liệu")
+    parser.add_argument(
+        "--file1",
+        default=None,
+        help=f"PKL camera/video 1, mặc định {DEFAULT_FILE_1}",
+    )
+    parser.add_argument(
+        "--file2",
+        default=None,
+        help=f"PKL camera/video 2, mặc định {DEFAULT_FILE_2}",
+    )
+    parser.add_argument(
+        "--reduced",
+        default=None,
+        choices=("true", "false"),
+        help="true: chỉ in kết quả chính",
+    )
+    parser.add_argument(
+        "--frame-id",
+        default=None,
+        help="Frame cần in, hoặc 'all' để in tất cả",
+    )
+    parser.add_argument(
+        "--no-prompt",
+        action="store_true",
+        help="Không hỏi tương tác, dùng tham số/default",
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=5.0, help="Số giây chờ nhập liệu"
+    )
     parser.add_argument("--person-id", type=int, default=0)
-    parser.add_argument("--gender", default="neutral", choices=("neutral", "male", "female"))
-    parser.add_argument("--smpl-model-dir", default=None, help="Thư mục chứa SMPL_FEMALE/MALE/NEUTRAL.pkl")
-    parser.add_argument("--checkpoint", default=None, help="Checkpoint pretrained của Learnable-SMPLify")
-    parser.add_argument("--learnable-smplify-src", default=None, help="Đường dẫn tới thư mục src của repo Learnable-SMPLify")
+    parser.add_argument(
+        "--gender", default="neutral", choices=("neutral", "male", "female")
+    )
+    parser.add_argument(
+        "--smpl-model-dir",
+        default=None,
+        help="Thư mục chứa SMPL_FEMALE/MALE/NEUTRAL.pkl",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="Checkpoint pretrained của Learnable-SMPLify",
+    )
+    parser.add_argument(
+        "--learnable-smplify-src",
+        default=None,
+        help="Đường dẫn tới thư mục src của repo Learnable-SMPLify",
+    )
     parser.add_argument("--device", default="auto", help="auto, cpu hoặc cuda")
-    parser.add_argument("--fallback-refiner", default="smooth", choices=("smooth", "none"))
+    parser.add_argument(
+        "--fallback-refiner", default="smooth", choices=("smooth", "none")
+    )
     parser.add_argument("--smooth-window", type=int, default=3)
-    parser.add_argument("--distance-rule", default="hybrid", choices=("hybrid", "mad", "q3"))
+    parser.add_argument(
+        "--distance-rule", default="hybrid", choices=("hybrid", "mad", "q3")
+    )
     parser.add_argument("--mad-factor", type=float, default=2.0)
     parser.add_argument("--orientation-epsilon", type=float, default=1e-2)
     parser.add_argument("--output-html", default="results.html")
@@ -110,26 +166,39 @@ def parse_args() -> argparse.Namespace:
 def fill_from_prompts(args: argparse.Namespace) -> argparse.Namespace:
     timeout = args.timeout
     if args.file1 is None:
-        args.file1 = input_with_timeout(
-            f"Nhập file .pkl thứ nhất [{DEFAULT_FILE_1}] sau {timeout:g}s dùng mặc định: ",
-            timeout,
-        ) or DEFAULT_FILE_1
+        args.file1 = (
+            input_with_timeout(
+                f"Nhập file .pkl thứ nhất [{DEFAULT_FILE_1}] sau {timeout:g}s dùng mặc định: ",
+                timeout,
+            )
+            or DEFAULT_FILE_1
+        )
     if args.file2 is None:
-        args.file2 = input_with_timeout(
-            f"Nhập file .pkl thứ hai [{DEFAULT_FILE_2}] sau {timeout:g}s dùng mặc định: ",
-            timeout,
-        ) or DEFAULT_FILE_2
+        args.file2 = (
+            input_with_timeout(
+                f"Nhập file .pkl thứ hai [{DEFAULT_FILE_2}] sau {timeout:g}s dùng mặc định: ",
+                timeout,
+            )
+            or DEFAULT_FILE_2
+        )
     if args.reduced is None:
         reduced_text = input_with_timeout(
             f"In giản lược reduced=True? [Y/n] sau {timeout:g}s dùng Y: ",
             timeout,
         )
-        args.reduced = "false" if reduced_text.lower() in ("n", "no", "false", "0") else "true"
+        args.reduced = (
+            "false"
+            if reduced_text.lower() in ("n", "no", "false", "0")
+            else "true"
+        )
     if args.frame_id is None:
-        args.frame_id = input_with_timeout(
-            f"Nhập frame_id hoặc all [all] sau {timeout:g}s dùng all: ",
-            timeout,
-        ) or "all"
+        args.frame_id = (
+            input_with_timeout(
+                f"Nhập frame_id hoặc all [all] sau {timeout:g}s dùng all: ",
+                timeout,
+            )
+            or "all"
+        )
     return args
 
 
@@ -168,18 +237,32 @@ def parse_bool(value: bool | str | None) -> bool:
     return str(value).lower() in ("true", "1", "yes", "y", "co", "có")
 
 
-def select_frames(frame_id: str | None, common_frame_ids: list[int | str]) -> list[int | str]:
+def select_frames(
+    frame_id: str | None, common_frame_ids: list[int | str]
+) -> list[int | str]:
     if not common_frame_ids:
         raise ValueError("Hai file không có frame_id chung.")
     if frame_id is None or str(frame_id).lower() == "all":
         return common_frame_ids
-    wanted = int(frame_id) if str(frame_id).lstrip("-").isdigit() else frame_id
+    if str(frame_id).lower() == "first_500":
+        return common_frame_ids[:500]
+
+    if str(frame_id).lstrip("-").isdigit():
+        wanted: int | str = int(str(frame_id))
+    else:
+        wanted = frame_id
+
     if wanted not in common_frame_ids:
         raise ValueError(f"Frame {frame_id!r} không có trong cả hai file.")
     return [wanted]
 
 
-def print_report(before: dict[Any, Any], after: dict[Any, Any], frame_ids: list[int | str], reduced: bool) -> None:
+def print_report(
+    before: dict[Any, Any],
+    after: dict[Any, Any],
+    frame_ids: list[int | str],
+    reduced: bool,
+) -> None:
     for frame_id in frame_ids:
         print(f"\nFrame {frame_id}")
         print_analysis("Trước sửa", before[frame_id], reduced)
@@ -190,11 +273,17 @@ def print_analysis(label: str, analysis: Any, reduced: bool) -> None:
     print(f"  {label}:")
     print(f"    M = {analysis.m_conflicts}")
     print(f"    D = {analysis.d_distance_errors}")
-    print(f"    Q1={fmt(analysis.q1)} | Q3={fmt(analysis.q3)} | mean={fmt(analysis.mean)}")
+    print(
+        f"    Q1={fmt(analysis.q1)} | Q3={fmt(analysis.q3)} | mean={fmt(analysis.mean)}"
+    )
     if not reduced:
         print(f"    Ngưỡng D = {analysis.threshold:.6f}")
         print("    Sai số theo pose:")
-        for name, error in sorted(analysis.per_joint_errors.items(), key=lambda item: item[1], reverse=True):
+        for name, error in sorted(
+            analysis.per_joint_errors.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        ):
             print(f"      {name:<18} {error:.6f}")
 
 
@@ -232,7 +321,9 @@ def write_json_report(
             for frame_id in frame_ids
         },
     }
-    Path(output_path).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    Path(output_path).write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

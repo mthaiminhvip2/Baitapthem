@@ -44,7 +44,9 @@ class LearnableInverseKinematicSolver:
                 refined.metadata["checkpoint"] = self.config.checkpoint
                 return refined
             except Exception as exc:
-                self.load_error = f"Learnable-SMPLify inference failed; fallback used: {exc}"
+                self.load_error = (
+                    f"Learnable-SMPLify inference failed; fallback used: {exc}"
+                )
 
         if self.config.fallback_refiner == "none":
             frames = copy.deepcopy(sequence.frames)
@@ -57,7 +59,8 @@ class LearnableInverseKinematicSolver:
         metadata.update(
             {
                 "refined_by": method,
-                "learnable_smplify_status": self.load_error or "checkpoint/source not provided",
+                "learnable_smplify_status": self.load_error
+                or "checkpoint/source not provided",
             }
         )
         return PoseSequence(
@@ -105,12 +108,18 @@ class LearnableInverseKinematicSolver:
             net = net.to(device)
             net.eval()
             state = torch.load(str(checkpoint), map_location="cpu")
-            state_dict = state["model"] if isinstance(state, dict) and "model" in state else state
+            state_dict = (
+                state["model"]
+                if isinstance(state, dict) and "model" in state
+                else state
+            )
             net.load_state_dict(state_dict)
 
             if hasattr(net, "human_model"):
                 for layer_name in net.human_model.layer.keys():
-                    net.human_model.layer[layer_name] = net.human_model.layer[layer_name].to(device)
+                    net.human_model.layer[layer_name] = net.human_model.layer[
+                        layer_name
+                    ].to(device)
 
             self.torch = torch
             self.net = net
@@ -127,7 +136,9 @@ class LearnableInverseKinematicSolver:
     def _refine_with_learnable_smplify(self, sequence: PoseSequence) -> PoseSequence:
         person = sequence.raw_person
         if not isinstance(person, dict):
-            raise ValueError("Raw PKL person data must be a dict for Learnable-SMPLify inference.")
+            raise ValueError(
+                "Raw PKL person data must be a dict for Learnable-SMPLify inference."
+            )
 
         pose_key = "pose" if "pose" in person else "poses"
         if pose_key not in person or "betas" not in person or "trans" not in person:
@@ -137,7 +148,9 @@ class LearnableInverseKinematicSolver:
         betas = np.asarray(person["betas"], dtype=np.float32)
         trans = np.asarray(person["trans"], dtype=np.float32)
         if poses.ndim != 2 or poses.shape[1] < 72 or len(poses) < 2:
-            raise ValueError("Expected poses with shape (frames, >=72) and at least two frames.")
+            raise ValueError(
+                "Expected poses with shape (frames, >=72) and at least two frames."
+            )
 
         torch = self.torch
         assert torch is not None
@@ -146,9 +159,15 @@ class LearnableInverseKinematicSolver:
         if betas.ndim == 1:
             betas = np.repeat(betas[np.newaxis, :], len(poses), axis=0)
         item = {
-            "poses": torch.as_tensor(poses[np.newaxis, :, :72], dtype=torch.float32, device=device),
-            "betas": torch.as_tensor(betas[np.newaxis, :, :10], dtype=torch.float32, device=device),
-            "trans": torch.as_tensor(trans[np.newaxis, :, :3], dtype=torch.float32, device=device),
+            "poses": torch.as_tensor(
+                poses[np.newaxis, :, :72], dtype=torch.float32, device=device
+            ),
+            "betas": torch.as_tensor(
+                betas[np.newaxis, :, :10], dtype=torch.float32, device=device
+            ),
+            "trans": torch.as_tensor(
+                trans[np.newaxis, :, :3], dtype=torch.float32, device=device
+            ),
         }
 
         frames = sequence.frame_ids
@@ -166,7 +185,9 @@ class LearnableInverseKinematicSolver:
                 }
                 if iter_root is not None and iter_body is not None:
                     model_input["start_pose"][:, :3] = iter_root.view(1, -1).clone()
-                    model_input["start_pose"][:, 3:66] = iter_body.view(1, -1)[:, :63].clone()
+                    model_input["start_pose"][:, 3:66] = iter_body.view(1, -1)[
+                        :, :63
+                    ].clone()
 
                 _, info = self.net(model_input, is_training=False)
                 iter_root = info["pred_root_orient"].detach()
@@ -176,7 +197,9 @@ class LearnableInverseKinematicSolver:
                     frame_id = frames[frame_idx + 1]
                     names = list(refined_frames[frame_id])
                     for joint_index, name in enumerate(names[: joints.shape[0]]):
-                        refined_frames[frame_id][name] = joints[joint_index, :3].astype(float)
+                        refined_frames[frame_id][name] = joints[joint_index, :3].astype(
+                            float
+                        )
 
         return PoseSequence(
             source_path=sequence.source_path,
@@ -203,7 +226,9 @@ def _smooth_frames(
 
     radius = max(1, window // 2)
     result = copy.deepcopy(frames)
-    joint_names = sorted(set.intersection(*(set(frames[frame_id]) for frame_id in frame_ids)))
+    joint_names = sorted(
+        set.intersection(*(set(frames[frame_id]) for frame_id in frame_ids))
+    )
 
     for index, frame_id in enumerate(frame_ids):
         left = max(0, index - radius)
