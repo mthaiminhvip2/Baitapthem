@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+results.html
+results.json
+samples/*.html
+samples/*.json

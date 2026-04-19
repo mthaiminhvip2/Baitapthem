@@ -1,0 +1,9 @@
+joblib
+numpy
+
+# Optional, only needed for real Learnable-SMPLify / SMPL model inference:
+# torch
+# pyyaml
+# easydict
+# tqdm
+# smplx
