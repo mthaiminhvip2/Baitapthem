@@ -192,8 +192,8 @@ class LearnableInverseKinematicSolver:
                 _, info = self.net(model_input, is_training=False)
                 iter_root = info["pred_root_orient"].detach()
                 iter_body = info["pred_body_pose"].detach()
-                if "pred_joints" in info:
-                    joints = info["pred_joints"].detach().cpu().numpy()[0]
+                if "pred_smpl_joints" in info:
+                    joints = info["pred_smpl_joints"].detach().cpu().numpy()[0]
                     frame_id = frames[frame_idx + 1]
                     names = list(refined_frames[frame_id])
                     for joint_index, name in enumerate(names[: joints.shape[0]]):
